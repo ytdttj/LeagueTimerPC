@@ -16,9 +16,9 @@ League Timer 是一款专为英雄联盟（League of Legends）玩家设计的�
 
 1. 为每个位置选择对应的召唤师技能。
 2. 根据情况勾选是否使用星界洞悉天赋和CD鞋。
-3. 点击“开始计时”按钮启动计时。
+3. 点击"开始计时"按钮启动计时。
 4. 倒计时结束后，会有声音和颜色提示。
-5. 再次点击“开始计时”可开始新的计时。
+5. 再次点击"开始计时"可开始新的计时。
 
 ## 安装与运行
 
@@ -43,15 +43,14 @@ League Timer 是一款专为英雄联盟（League of Legends）玩家设计的�
     ```bash
     pip install -r requirements.txt
     ```
-    *(注意: 如果 `requirements.txt` 不存在或不完整，请根据 `league_timer.py` 中的 `import` 语句手动安装所需库，例如 `pip install playsound`)*
+    requirements.txt 中包含了项目所需的依赖库，包括 `pyinstaller` 。
 4.  **运行应用:**
     ```bash
     python league_timer.py
     ```
 5.  **（可选）打包为可执行文件:** 如果你想创建独立的可执行文件（.exe），可以使用 PyInstaller：
     ```bash
-    pip install pyinstaller
-    pyinstaller --onefile --windowed --add-data "notification_sound.mp3;." league_timer.py
+    pyinstaller --onefile --windowed --version-file version.txt --add-data "notification_sound.mp3;." league_timer.py
     ```
     可执行文件将生成在 `dist` 目录下。
 

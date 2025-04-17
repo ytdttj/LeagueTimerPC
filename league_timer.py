@@ -69,12 +69,16 @@ class LeagueTimerApp:
         self.link_frame = ttk.Frame(self.frame_right)
         self.link_frame.grid(row=2, column=0, sticky="se", pady=10, padx=5)
 
+        # 添加切换为悬浮窗按钮
+        float_button = ttk.Button(self.link_frame, text="切换为悬浮窗", command=self.switch_to_mini)
+        float_button.pack(side=tk.LEFT, padx=(0, 10))
+
         github_link = ttk.Label(self.link_frame, text="开源地址", foreground="blue", cursor="hand2")
-        github_link.pack()
+        github_link.pack(side=tk.LEFT, padx=(0, 10))
         github_link.bind("<Button-1>", lambda e: webbrowser.open_new("https://github.com/ytdttj/LeagueTimerPC"))
 
         weibo_link = ttk.Label(self.link_frame, text="@ytdttj", foreground="blue", cursor="hand2")
-        weibo_link.pack()
+        weibo_link.pack(side=tk.LEFT)
         weibo_link.bind("<Button-1>", lambda e: webbrowser.open_new("https://weibo.com/u/2265348910"))
 
     def calculate_cooldown(self, base_cd, has_insight, has_boots):
@@ -89,6 +93,32 @@ class LeagueTimerApp:
             
         final_cd = base_cd * (100 / (100 + total_haste))
         return math.floor(final_cd)
+        
+    def switch_to_mini(self):
+        """销毁当前窗口并启动悬浮窗模式"""
+        self.root.destroy()
+        try:
+            # 尝试直接导入并运行模块（适用于开发环境）
+            import league_timer_mini
+            import importlib
+            importlib.reload(league_timer_mini)
+            root = tk.Tk()
+            app = league_timer_mini.LeagueTimerApp(root)
+            root.mainloop()
+        except ImportError:
+            # 如果导入失败，尝试使用subprocess启动（适用于打包环境）
+            import subprocess
+            import os
+            import sys
+            # 获取当前执行文件的目录
+            if getattr(sys, 'frozen', False):
+                # 如果是打包后的exe
+                base_dir = os.path.dirname(sys.executable)
+                mini_path = os.path.join(base_dir, "league_timer_mini.py")
+                subprocess.Popen([sys.executable, mini_path])
+            else:
+                # 如果是开发环境
+                subprocess.Popen([sys.executable, "league_timer_mini.py"])
 
 class RoleFrame(ttk.Frame):
     def __init__(self, parent, role_id, role_name, app_instance):

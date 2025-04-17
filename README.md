@@ -50,7 +50,7 @@ League Timer 是一款专为英雄联盟（League of Legends）玩家设计的�
     ```
 5.  **（可选）打包为可执行文件:** 如果你想创建独立的可执行文件（.exe），可以使用 PyInstaller：
     ```bash
-    pyinstaller --onefile --windowed --version-file version.txt --add-data "notification_sound.mp3;." league_timer.py
+    pyinstaller --onefile --windowed --version-file version.txt --add-data "notification_sound.mp3;." --add-data "league_timer_mini.py;." league_timer.py
     ```
     可执行文件将生成在 `dist` 目录下。
 

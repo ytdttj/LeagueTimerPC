@@ -54,6 +54,10 @@ class LeagueTimerApp:
         close_button.pack(side=tk.RIGHT)
         self.lock_button = ttk.Button(self.drag_frame, text="🔓", command=self.toggle_lock, width=2)
         self.lock_button.pack(side=tk.RIGHT, padx=2)
+
+        # 添加重置按钮
+        reset_button = ttk.Button(self.drag_frame, text="新", command=self.reset_mini_all, width=2)
+        reset_button.pack(side=tk.RIGHT, padx=2) # 放置在锁定按钮左侧
         
         # 只添加上单标签到拖动区域
         self.top_label = ttk.Label(self.drag_frame, text="上路", background='#AAAAAA', font=("Arial", 9, "bold"))
@@ -70,12 +74,20 @@ class LeagueTimerApp:
         self.bot_frame.grid(row=4, column=0, sticky="nsew", pady=2, padx=2)
         self.sup_frame = RoleFrame(root, "Sup", "辅助", self)
         self.sup_frame.grid(row=5, column=0, sticky="nsew", pady=2, padx=2)
+
+        # Store all role frames for easy access during reset
+        self.role_frames = [self.top_frame, self.jug_frame, self.mid_frame, self.bot_frame, self.sup_frame]
         
         self._offset_x = 0
         self._offset_y = 0
         self.is_locked = False
         self.drag_frame.bind('<Button-1>', self.click_window)
         self.drag_frame.bind('<B1-Motion>', self.drag_window)
+
+    def reset_mini_all(self):
+        """Resets all role frames in the mini window to their initial state."""
+        for frame in self.role_frames:
+            frame.reset()
 
     def click_window(self, event):
         self._offset_x = event.x
@@ -246,6 +258,57 @@ class RoleFrame(tk.Frame):
         if timer_id in self.timer_jobs:
             self.app.root.after_cancel(self.timer_jobs[timer_id])
             del self.timer_jobs[timer_id]
+
+    def reset(self):
+        """Resets the controls and timers for this role frame."""
+        # Cancel all timers for this frame first
+        active_timers = list(self.timer_jobs.keys())
+        for timer_id in active_timers:
+            if timer_id.startswith(self.role_id):
+                try:
+                    if timer_id in self.timer_jobs:
+                        self.app.root.after_cancel(self.timer_jobs[timer_id])
+                        del self.timer_jobs[timer_id]
+                except (ValueError, tk.TclError):
+                    pass # Ignore errors if job doesn't exist or root is destroyed
+                if timer_id in self.timers:
+                    del self.timers[timer_id]
+
+        # Reset UI elements for both spell slots (1 and 2)
+        for spell_index in [1, 2]:
+            try:
+                timer_label = getattr(self, f"timer_label{spell_index}")
+                button = getattr(self, f"button{spell_index}")
+                combo = getattr(self, f"combo{spell_index}")
+                insight_check = getattr(self, f"insight_check{spell_index}")
+                boots_check = getattr(self, f"boots_check{spell_index}")
+                insight_var = getattr(self, f"insight_var{spell_index}")
+                boots_var = getattr(self, f"boots_var{spell_index}")
+
+                if timer_label.winfo_exists():
+                    timer_label.config(text="--:--", foreground="black")
+                if button.winfo_exists():
+                    button.config(state="normal")
+                if combo.winfo_exists():
+                    combo.config(state="readonly")
+                    combo.set("未选择")
+                    combo['values'] = SPELL_NAMES # Ensure full list is available
+                if insight_check.winfo_exists():
+                    insight_check.config(state="normal")
+                    insight_var.set(False)
+                if boots_check.winfo_exists():
+                    boots_check.config(state="normal")
+                    boots_var.set(False)
+            except AttributeError:
+                # Handle cases where attributes might not exist (shouldn't happen with getattr)
+                print(f"Error resetting UI for {self.role_id} spell {spell_index}")
+            except tk.TclError:
+                 # Handle cases where widget might be destroyed
+                 print(f"Error configuring widget for {self.role_id} spell {spell_index}, likely destroyed.")
+
+        # Ensure spell selections don't conflict after reset
+        self.on_spell_selected(None, 1) # Trigger update for spell 1's available list
+        self.on_spell_selected(None, 2) # Trigger update for spell 2's available list
 
 
 if __name__ == "__main__":

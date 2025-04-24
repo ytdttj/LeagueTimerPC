@@ -4,7 +4,9 @@ from tkinter import messagebox
 import math
 import playsound
 import webbrowser
-from PIL import Image, ImageTk
+# from PIL import Image, ImageTk # PIL is not used currently
+import os
+import sys
 
 SPELL_COOLDOWNS = {
     "未选择": 0,
@@ -56,18 +58,24 @@ class LeagueTimerApp:
         self.mid_frame = RoleFrame(self.frame_left, "Mid", "中路", self)
         self.mid_frame.grid(row=1, column=0, sticky="nsew", pady=5, padx=5)
 
-        self.sup_frame = RoleFrame(self.frame_left, "Sup", "辅助", self)
-        self.sup_frame.grid(row=2, column=0, sticky="nsew", pady=5, padx=5)
+        # 下路移到左侧
+        self.bot_frame = RoleFrame(self.frame_left, "Bot", "下路", self)
+        self.bot_frame.grid(row=2, column=0, sticky="nsew", pady=5, padx=5)
 
         self.jug_frame = RoleFrame(self.frame_right, "Jug", "打野", self)
         self.jug_frame.grid(row=0, column=0, sticky="nsew", pady=5, padx=5)
 
-        self.bot_frame = RoleFrame(self.frame_right, "Bot", "下路", self)
-        self.bot_frame.grid(row=1, column=0, sticky="nsew", pady=5, padx=5)
+        # 辅助移到右侧
+        self.sup_frame = RoleFrame(self.frame_right, "Sup", "辅助", self)
+        self.sup_frame.grid(row=1, column=0, sticky="nsew", pady=5, padx=5)
 
         # Link Frame
         self.link_frame = ttk.Frame(self.frame_right)
         self.link_frame.grid(row=2, column=0, sticky="se", pady=10, padx=5)
+
+        # 添加重置按钮
+        reset_button = ttk.Button(self.link_frame, text="重置", command=self.reset_all)
+        reset_button.pack(side=tk.LEFT, padx=(0, 10))
 
         # 添加切换为悬浮窗按钮
         float_button = ttk.Button(self.link_frame, text="切换为悬浮窗", command=self.switch_to_mini)
@@ -80,6 +88,14 @@ class LeagueTimerApp:
         weibo_link = ttk.Label(self.link_frame, text="@ytdttj", foreground="blue", cursor="hand2")
         weibo_link.pack(side=tk.LEFT)
         weibo_link.bind("<Button-1>", lambda e: webbrowser.open_new("https://weibo.com/u/2265348910"))
+
+        # Store all role frames for easy access during reset
+        self.role_frames = [self.top_frame, self.jug_frame, self.mid_frame, self.bot_frame, self.sup_frame]
+
+    def reset_all(self):
+        """Resets all role frames to their initial state."""
+        for frame in self.role_frames:
+            frame.reset()
 
     def calculate_cooldown(self, base_cd, has_insight, has_boots):
         if base_cd == 0:
@@ -119,6 +135,16 @@ class LeagueTimerApp:
             else:
                 # 如果是开发环境
                 subprocess.Popen([sys.executable, "league_timer_mini.py"])
+
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 class RoleFrame(ttk.Frame):
     def __init__(self, parent, role_id, role_name, app_instance):
@@ -177,6 +203,32 @@ class RoleFrame(ttk.Frame):
         boots_check.grid(row=row_num, column=5, padx=5, pady=2)
         setattr(self, f"boots_var{spell_index}", boots_var)
         setattr(self, f"boots_check{spell_index}", boots_check)
+
+    def reset(self):
+        """Resets the widgets in this frame to their initial state."""
+        for spell_index in [1, 2]:
+            timer_id = f"{self.role_id}_{spell_index}"
+            self.cancel_timer(timer_id) # Cancel any running timer
+
+            combo = getattr(self, f"combo{spell_index}")
+            button = getattr(self, f"button{spell_index}")
+            timer_label = getattr(self, f"timer_label{spell_index}")
+            insight_var = getattr(self, f"insight_var{spell_index}")
+            insight_check = getattr(self, f"insight_check{spell_index}")
+            boots_var = getattr(self, f"boots_var{spell_index}")
+            boots_check = getattr(self, f"boots_check{spell_index}")
+
+            combo.set("未选择")
+            combo.config(state="readonly")
+            # Reset available spell list if needed (handled by on_spell_selected)
+            self.on_spell_selected(None, spell_index) 
+
+            button.config(state="normal")
+            timer_label.config(text="--:--", foreground="black")
+            insight_var.set(False)
+            insight_check.config(state="normal")
+            boots_var.set(False)
+            boots_check.config(state="normal")
 
     def on_spell_selected(self, event, selected_index):
         other_index = 3 - selected_index
@@ -286,21 +338,37 @@ class RoleFrame(ttk.Frame):
             button = getattr(self, f"button{spell_index}")
             boots_check = getattr(self, f"boots_check{spell_index}")
 
+            combo = getattr(self, f"combo{spell_index}")
+            insight_check = getattr(self, f"insight_check{spell_index}")
+
             if timer_label.winfo_exists():
                 timer_label.config(text="冷却完毕", foreground="red")
             if button.winfo_exists():
                 button.config(state="normal")
+            # Remove re-enabling combo and insight check
+            # if combo.winfo_exists():
+            #     combo.config(state="readonly") # Re-enable combo box
+            # if insight_check.winfo_exists():
+            #     insight_check.config(state="normal") # Re-enable insight check
             if boots_check.winfo_exists():
-                boots_check.config(state="normal")
+                boots_check.config(state="normal") # Re-enable boots check
 
         except (tk.TclError, AttributeError) as e:
             print(f"Error accessing widgets for {timer_id} on finish: {e}")
             return
 
         try:
-            playsound.playsound('notification_sound.mp3', block=False)
+            sound_path = get_resource_path('notification_sound.mp3')
+            if os.path.exists(sound_path):
+                playsound.playsound(sound_path, block=False)
+            else:
+                print(f"Sound file not found at: {sound_path}")
         except Exception as e:
-            print(f"Error playing sound: {e}")
+            # More specific error handling for playsound issues if needed
+            if "The specified device is not open or is not recognized by MCI" in str(e):
+                print("Error playing sound: Audio device issue or file format problem.")
+            else:
+                print(f"Error playing sound: {e}")
 
 
 if __name__ == "__main__":
